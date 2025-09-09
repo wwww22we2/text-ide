@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Todo应用服务
+  todo-app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-your-production-secret-key}
+      - DATABASE_URL=sqlite:///todo.db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./backups:/app/backups
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - todo-network
+
+  # Redis服务（用于缓存和会话存储）
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+      
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - todo-network
+    command: redis-server --appendonly yes
+
+  # Nginx反向代理（可选）
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - todo-app
+    restart: unless-stopped
+    networks:
+      - todo-network
+
+  # 数据库备份服务（可选）
+  backup:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    environment:
+      - FLASK_ENV=production
+    command: python migrations.py backup
+    depends_on:
+      - todo-app
+    networks:
+      - todo-network
+    profiles:
+      - backup
+
+volumes:
+  redis-data:
+
+networks:
+  todo-network:
+    driver: bridge 

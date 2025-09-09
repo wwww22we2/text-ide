@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Todo List - 任务管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-tasks"></i> Todo List</h1>
+            <div class="stats" id="stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="total">0</span>
+                    <span class="stat-label">总任务</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="completed">0</span>
+                    <span class="stat-label">已完成</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="pending">0</span>
+                    <span class="stat-label">待完成</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="completion-rate">0%</span>
+                    <span class="stat-label">完成率</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flash 消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            <i class="fas fa-info-circle"></i>
+                            {{ message }}
+                            <button class="close-flash">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 添加任务表单 -->
+        <div class="add-todo-form">
+            <form method="POST" class="todo-form">
+                <div class="form-group">
+                    <input type="text" 
+                           name="content" 
+                           placeholder="请输入新任务..." 
+                           class="todo-input" 
+                           required 
+                           maxlength="200">
+                    <select name="priority" class="priority-select">
+                        <option value="low">🟢 低优先级</option>
+                        <option value="medium" selected>🟡 中优先级</option>
+                        <option value="high">🔴 高优先级</option>
+                    </select>
+                    <button type="submit" class="add-btn">
+                        <i class="fas fa-plus"></i> 添加任务
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 任务列表 -->
+        <div class="todo-list">
+            {% if todos %}
+                <!-- 清空所有历史信息按钮 -->
+                <div style="text-align: center; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                    <form method="POST" action="{{ url_for('clear_all') }}" style="display: inline;">
+                        <button type="submit" 
+                                class="btn btn-danger" 
+                                style="padding: 10px 20px; font-size: 0.9rem;"
+                                onclick="return confirm('⚠️ 警告：这将删除所有任务历史信息！\n\n此操作不可撤销，确定要继续吗？')">
+                            <i class="fas fa-trash-alt"></i> 清空所有历史信息
+                        </button>
+                    </form>
+                </div>
+                {% for todo in todos %}
+                    <div class="todo-item {{ 'completed' if todo.completed else '' }} priority-{{ todo.priority }}" data-todo-id="{{ todo.id }}">
+                        <div class="todo-content">
+                            <div class="todo-text">
+                                {% if todo.completed %}
+                                    <del>{{ todo.content }}</del>
+                                {% else %}
+                                    {{ todo.content }}
+                                {% endif %}
+                            </div>
+                            <div class="todo-meta">
+                                <span class="priority-badge priority-{{ todo.priority }}">
+                                    {% if todo.priority == 'high' %}🔴 高优先级
+                                    {% elif todo.priority == 'medium' %}🟡 中优先级
+                                    {% else %}🟢 低优先级
+                                    {% endif %}
+                                </span>
+                                <div class="time-info">
+                                    <span class="created-time">
+                                        <i class="fas fa-clock"></i> 创建: {{ todo.created_at | format_datetime }}
+                                        <small>({{ todo.created_at | relative_time }})</small>
+                                    </span>
+                                    {% if todo.completed_at %}
+                                        <span class="completed-time">
+                                            <i class="fas fa-check-circle"></i> 完成: {{ todo.completed_at | format_datetime }}
+                                            <small>({{ todo.completed_at | relative_time }})</small>
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="todo-actions">
+                            {% if not todo.completed %}
+                                <a href="{{ url_for('complete', todo_id=todo.id) }}" 
+                                   class="btn btn-success" 
+                                   title="标记为完成">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                <a href="{{ url_for('edit', todo_id=todo.id) }}" 
+                                   class="btn btn-info" 
+                                   title="编辑任务">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('uncomplete', todo_id=todo.id) }}" 
+                                   class="btn btn-warning" 
+                                   title="标记为未完成">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            {% endif %}
+                            <a href="{{ url_for('delete', todo_id=todo.id) }}" 
+                               class="btn btn-danger" 
+                               title="删除任务"
+                               onclick="return confirm('确定要删除这个任务吗？')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>还没有任务</h3>
+                    <p>添加你的第一个任务开始管理你的待办事项吧！</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // 加载统计信息
+        function loadStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total').textContent = data.total;
+                    document.getElementById('completed').textContent = data.completed;
+                    document.getElementById('pending').textContent = data.pending;
+                    document.getElementById('completion-rate').textContent = data.completion_rate + '%';
+                })
+                .catch(error => console.error('Error loading stats:', error));
+        }
+
+        // 关闭flash消息
+        document.querySelectorAll('.close-flash').forEach(button => {
+            button.addEventListener('click', function() {
+                this.parentElement.style.display = 'none';
+            });
+        });
+
+        // 自动隐藏flash消息
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.style.display = 'none', 300);
+            });
+        }, 5000);
+
+        // 页面加载时加载统计信息
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        // 实时更新相对时间
+        function updateRelativeTimes() {
+            // 向后端请求更新相对时间
+            fetch('/api/times')
+                .then(response => response.json())
+                .then(data => {
+                    // 更新每个任务的相对时间
+                    Object.keys(data).forEach(todoId => {
+                        const timeInfo = data[todoId];
+                        
+                        // 更新创建时间
+                        const createdTimeElement = document.querySelector(`[data-todo-id="${todoId}"] .created-time small`);
+                        if (createdTimeElement && timeInfo.created_relative) {
+                            createdTimeElement.textContent = `(${timeInfo.created_relative})`;
+                        }
+                        
+                        // 更新完成时间
+                        const completedTimeElement = document.querySelector(`[data-todo-id="${todoId}"] .completed-time small`);
+                        if (completedTimeElement && timeInfo.completed_relative) {
+                            completedTimeElement.textContent = `(${timeInfo.completed_relative})`;
+                        }
+                    });
+                })
+                .catch(error => console.error('Error updating times:', error));
+        }
+
+        // 每5分钟更新一次相对时间
+        setInterval(updateRelativeTimes, 5 * 60 * 1000);
+
+        // 增强时间显示的交互性
+        document.querySelectorAll('.time-info small').forEach(element => {
+            element.addEventListener('mouseover', function() {
+                this.style.opacity = '1';
+                this.style.transform = 'scale(1.05)';
+            });
+            element.addEventListener('mouseout', function() {
+                this.style.opacity = '0.7';
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // 为完成的任务添加庆祝动画
+        document.querySelectorAll('.todo-item.completed').forEach(item => {
+            item.style.transform = 'scale(0.98)';
+            item.style.opacity = '0.9';
+        });
+    </script>
+</body>
+</html> 

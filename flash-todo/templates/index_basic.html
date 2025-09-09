@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo 应用</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-tasks"></i> Todo 应用</h1>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        {{ message }}
+                        <button class="close-flash">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-item">
+                <i class="fas fa-list"></i>
+                <span>总计: <span id="total">{{ stats.total }}</span></span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-check-circle"></i>
+                <span>已完成: <span id="completed">{{ stats.completed }}</span></span>
+            </div>
+            <div class="stat-item">
+                <i class="fas fa-clock"></i>
+                <span>待完成: <span id="pending">{{ stats.pending }}</span></span>
+            </div>
+        </div>
+
+        <!-- Add Todo Form -->
+        <div class="add-todo">
+            <form method="POST" action="{{ url_for('add_todo') }}">
+                <div class="form-group">
+                    <input type="text" name="content" placeholder="输入新的任务..." required>
+                    <select name="priority">
+                        <option value="low">低优先级</option>
+                        <option value="medium" selected>中优先级</option>
+                        <option value="high">高优先级</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Todo List -->
+        <div class="todo-list">
+            {% if todos %}
+                {% for todo in todos %}
+                    <div class="todo-item {% if todo.completed %}completed{% endif %}">
+                        <div class="todo-content">
+                            <div class="todo-header">
+                                <span class="todo-text">{{ todo.content }}</span>
+                                <span class="priority priority-{{ todo.priority }}">
+                                    {% if todo.priority == 'high' %}
+                                        <i class="fas fa-exclamation-triangle"></i> 高
+                                    {% elif todo.priority == 'medium' %}
+                                        <i class="fas fa-minus"></i> 中
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i> 低
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="time-info">
+                                <span class="created-time">
+                                    <i class="fas fa-clock"></i> 创建: {{ todo.created_at | format_datetime }}
+                                    <small>({{ todo.created_at | relative_time }})</small>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="todo-actions">
+                            <a href="{{ url_for('toggle_todo', todo_id=todo.id) }}" 
+                               class="btn {% if todo.completed %}btn-warning{% else %}btn-success{% endif %}" 
+                               title="{% if todo.completed %}标记为未完成{% else %}标记为完成{% endif %}">
+                                {% if todo.completed %}
+                                    <i class="fas fa-undo"></i>
+                                {% else %}
+                                    <i class="fas fa-check"></i>
+                                {% endif %}
+                            </a>
+                            <a href="{{ url_for('edit_todo', todo_id=todo.id) }}" 
+                               class="btn btn-info" 
+                               title="编辑任务">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{{ url_for('delete_todo', todo_id=todo.id) }}" 
+                               class="btn btn-danger" 
+                               title="删除任务"
+                               onclick="return confirm('确定要删除这个任务吗？')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>还没有任务</h3>
+                    <p>添加你的第一个任务开始管理你的待办事项吧！</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // 关闭flash消息
+        document.querySelectorAll('.close-flash').forEach(button => {
+            button.addEventListener('click', function() {
+                this.parentElement.style.display = 'none';
+            });
+        });
+
+        // 自动隐藏flash消息
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.style.display = 'none', 300);
+            });
+        }, 5000);
+    </script>
+</body>
+</html> 

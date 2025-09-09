@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✏️ 编辑任务 - Todo List</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-edit"></i> 编辑任务</h1>
+            <a href="{{ url_for('index') }}" class="back-btn">
+                <i class="fas fa-arrow-left"></i> 返回主页
+            </a>
+        </header>
+
+        <!-- Flash 消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            <i class="fas fa-info-circle"></i>
+                            {{ message }}
+                            <button class="close-flash">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 编辑表单 -->
+        <div class="edit-form-container">
+            <div class="task-info">
+                <h3>任务信息</h3>
+                <p><strong>创建时间:</strong> {{ todo.created_at | format_datetime }}</p>
+                {% if todo.completed_at %}
+                    <p><strong>完成时间:</strong> {{ todo.completed_at | format_datetime }}
+                        <span class="relative-time">({{ todo.completed_at | relative_time }})</span>
+                    </p>
+                {% endif %}
+                <p><strong>状态:</strong> 
+                    {% if todo.completed %}
+                        <span class="status-completed">✅ 已完成</span>
+                    {% else %}
+                        <span class="status-pending">⏳ 待完成</span>
+                    {% endif %}
+                </p>
+                {% if todo.completed %}
+                    <div class="completion-info">
+                        <i class="fas fa-check-circle"></i>
+                        <span>此任务已于 {{ todo.completed_at | format_datetime }} 完成</span>
+                        {% set completion_time = todo.completed_at | relative_time %}
+                        {% if completion_time %}
+                            <span class="completion-badge">{{ completion_time }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <form method="POST" class="edit-form">
+                <div class="form-group">
+                    <label for="content">任务内容</label>
+                    <textarea name="content" 
+                              id="content" 
+                              class="todo-textarea" 
+                              required 
+                              maxlength="200" 
+                              placeholder="请输入任务内容...">{{ todo.content }}</textarea>
+                    <div class="char-counter">
+                        <span id="char-count">{{ todo.content|length }}</span>/200
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">优先级</label>
+                    <select name="priority" id="priority" class="priority-select">
+                        <option value="low" {{ 'selected' if todo.priority == 'low' else '' }}>🟢 低优先级</option>
+                        <option value="medium" {{ 'selected' if todo.priority == 'medium' else '' }}>🟡 中优先级</option>
+                        <option value="high" {{ 'selected' if todo.priority == 'high' else '' }}>🔴 高优先级</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 保存更改
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> 取消
+                    </a>
+                </div>
+            </form>
+
+            <!-- 快捷操作 -->
+            <div class="quick-actions">
+                <h3>快捷操作</h3>
+                <div class="quick-action-buttons">
+                    {% if not todo.completed %}
+                        <a href="{{ url_for('complete', todo_id=todo.id) }}" 
+                           class="btn btn-success">
+                            <i class="fas fa-check"></i> 标记为完成
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('uncomplete', todo_id=todo.id) }}" 
+                           class="btn btn-warning">
+                            <i class="fas fa-undo"></i> 标记为未完成
+                        </a>
+                    {% endif %}
+                    <a href="{{ url_for('delete', todo_id=todo.id) }}" 
+                       class="btn btn-danger"
+                       onclick="return confirm('确定要删除这个任务吗？删除后无法恢复！')">
+                        <i class="fas fa-trash"></i> 删除任务
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 字符计数器
+        const textarea = document.getElementById('content');
+        const charCount = document.getElementById('char-count');
+
+        textarea.addEventListener('input', function() {
+            const count = this.value.length;
+            charCount.textContent = count;
+            
+            // 字符数接近限制时变色提醒
+            if (count > 180) {
+                charCount.style.color = '#ff4757';
+            } else if (count > 150) {
+                charCount.style.color = '#ffa502';
+            } else {
+                charCount.style.color = '#747d8c';
+            }
+        });
+
+        // 关闭flash消息
+        document.querySelectorAll('.close-flash').forEach(button => {
+            button.addEventListener('click', function() {
+                this.parentElement.style.display = 'none';
+            });
+        });
+
+        // 自动隐藏flash消息
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.style.display = 'none', 300);
+            });
+        }, 5000);
+
+        // 防止意外离开页面
+        let formChanged = false;
+        textarea.addEventListener('input', () => formChanged = true);
+        document.getElementById('priority').addEventListener('change', () => formChanged = true);
+
+        window.addEventListener('beforeunload', function(e) {
+            if (formChanged) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // 表单提交时取消beforeunload提醒
+        document.querySelector('.edit-form').addEventListener('submit', () => {
+            formChanged = false;
+        });
+
+        // 增强时间显示的交互性
+        document.querySelectorAll('.relative-time, .completion-badge').forEach(element => {
+            element.addEventListener('mouseover', function() {
+                this.style.transform = 'scale(1.1)';
+                this.style.transition = 'transform 0.2s ease';
+            });
+            element.addEventListener('mouseout', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // 完成信息的动画效果
+        const completionInfo = document.querySelector('.completion-info');
+        if (completionInfo) {
+            completionInfo.style.animation = 'fadeInUp 0.6s ease-out';
+        }
+
+        // 为CSS添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .relative-time {
+                transition: all 0.2s ease;
+            }
+            .completion-badge {
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            .task-info p {
+                margin-bottom: 8px;
+            }
+            .task-info p:last-child {
+                margin-bottom: 0;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

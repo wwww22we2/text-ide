@@ -1,0 +1,39 @@
+# Flask应用配置
+FLASK_APP=app_new.py
+FLASK_ENV=development
+SECRET_KEY=your-super-secret-key-change-this-in-production
+
+# 数据库配置
+DATABASE_URL=sqlite:///todo.db
+
+# 生产环境配置
+# FLASK_ENV=production
+# SECRET_KEY=your-production-secret-key
+
+# Redis配置（用于缓存和会话存储）
+# REDIS_URL=redis://localhost:6379/0
+
+# 邮件配置（用于通知功能）
+# MAIL_SERVER=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USE_TLS=True
+# MAIL_USERNAME=your-email@gmail.com
+# MAIL_PASSWORD=your-app-password
+
+# 日志配置
+LOG_LEVEL=INFO
+LOG_FILE=todo_app.log
+
+# 安全配置
+SESSION_COOKIE_SECURE=False
+SESSION_COOKIE_HTTPONLY=True
+SESSION_COOKIE_SAMESITE=Lax
+
+# 文件上传配置
+MAX_CONTENT_LENGTH=16777216
+UPLOAD_FOLDER=uploads
+ALLOWED_EXTENSIONS=txt,pdf,png,jpg,jpeg,gif
+
+# 限流配置
+RATELIMIT_STORAGE_URL=memory://
+RATELIMIT_DEFAULT=200 per day, 50 per hour 
